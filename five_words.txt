@@ -12474,7 +12474,6 @@ shies
 shift
 shiko
 shilf
-shilh
 shily
 shyly
 shill
@@ -12888,7 +12887,6 @@ sluer
 slues
 sluff
 slugs
-sluig
 sluit
 slump
 slums
@@ -13464,7 +13462,6 @@ stook
 stool
 stoon
 stoop
-stoot
 stopa
 stope
 stops

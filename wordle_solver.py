@@ -1,6 +1,8 @@
 from collections import defaultdict
+from itertools import chain
 
 import argparse
+import random
 
 
 def correct_positions_dict(correct_positions_str):
@@ -29,12 +31,14 @@ def invalid_positions_dict(incorrect_positions_list):
 
 def main():
     # Parse command line arguments.
-    parser = argparse.ArgumentParser(description='Helper tool for solving Wordle puzzles')
-    parser.add_argument('correct_positions', default='')  # TODO HELP
+    parser = argparse.ArgumentParser(description='Helper tool for solving Wordle puzzles',
+                                     epilog='E.g. python wordle_solver.py h_l__ -k hle -x _appy _o_es')
+    parser.add_argument('correct_positions', default='',
+                        help='Known letters in their correct positions. E.g. h_l__')
     parser.add_argument('-k', '--known_letters', type=set, default=set(),
-                        help='Letters which are known to be contained in the word but their possition is unknown')
-    parser.add_argument('-i', '--invalid_letters', type=set, default=set())  # TODO HELP
-    parser.add_argument('-x', '--invalid_positions', nargs='*', default=[])  # TODO HELP
+                        help='Letters which are known to be contained in the word but their possition is unknown. E.g. hle')
+    parser.add_argument('-i', '--invalid_positions', nargs='*', default=[],
+                        help='Known incorrect letter positions. E.g. _appy _o_es')
                         
     args = parser.parse_args()
 
@@ -65,39 +69,45 @@ def main():
     if args.known_letters:
         filtered_words = [w for w in filtered_words if all(c in w for c in args.known_letters)]
 
-    # Remove all words which contain invalid letters
-    if args.invalid_letters:
-        filtered_words = [w for w in filtered_words if not args.invalid_letters.intersection(w)]
+    # Create a set of invalid letters based on all the letters in the invalid positions minus known letters
+    invalid_letters = set(c for c in chain(*args.invalid_positions) if c != '_') - set(args.known_letters)
 
-    # Count all the letters in the remaining words (per position)
-    # TODO LOL HORRIBLE
-    letter_count = [
-        defaultdict(int),
-        defaultdict(int),
-        defaultdict(int),
-        defaultdict(int),
-        defaultdict(int),
-    ]
+    # Remove all words which contain invalid letters
+    if invalid_letters:
+        filtered_words = [w for w in filtered_words if not invalid_letters.intersection(w)]
+
+    # Count all the letters in the remaining words (per position) using a defaultdict
+    # for each position
+    letter_count = [defaultdict(int) for __ in range(5)]
     for word in filtered_words:
         for pos, c in enumerate(word):
             letter_count[pos][c] += 1
 
-    # Find highest scoring word
-    # TODO TESTING prioritise unique letters
+    # Find highest scoring word(s)
+    # It is possible that multiple words could have the same score. This is
+    # accounted for by keeping a list of all these words and selecting one
+    # at random.
     max_score = 0
-    best_word = None
+    best_words = []
     for word in filtered_words:
+        # The score of a word is the sum of the character counts for each
+        # position in the word
         score = sum(letter_count[pos][c] for pos, c in enumerate(word))
         # Weight used for prioritising words with entirely unique letters
         weight = 1
         if len(set(word)) == 5:
+            # The weighting is stronger the less correct positions which are
+            # currently known.
             weight += 1 / (len(correct_positions) + 1)
         score *= weight
         if score > max_score:
             max_score = score
-            best_word = word
+            best_words = [word]
+        elif score == max_score:
+            best_words.append(word)
 
-    print(best_word)
+    # Print out the recommended word
+    print(random.choice(best_words))
 
 
 if __name__ == '__main__':
